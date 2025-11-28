@@ -1,108 +1,104 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const axios = require("axios");
-const OpenAI = require("openai");
+require('dotenv').config();
+
+const express   = require('express');
+const axios     = require('axios');
+const cors      = require('cors');
+const helmet    = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { Groq }  = require('groq-sdk');
 
 const app = express();
-const port = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
-const OPENWEATHER_KEY = process.env.OPENWEATHER_KEY;
-console.log("OPENWEATHER_KEY chargée (début) :", OPENWEATHER_KEY && OPENWEATHER_KEY.slice(0, 5));
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+if (!process.env.OPENWEATHER_KEY) {
+  console.error('Clé OPENWEATHER_KEY manquante');
+  process.exit(1);
+}
+if (!process.env.GROQ_API_KEY) {
+  console.error('Clé GROQ_API_KEY manquante');
+  process.exit(1);
+}
 
+console.log('Clés météo & IA chargées');
 
-app.use(cors());
+app.use(helmet());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// GET /api/weather?city=Paris
-app.get("/api/weather", async (req, res) => {
-  const city = req.query.city;
+const limiter = rateLimit({
+  windowMs: 60_000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
 
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+app.get('/api/weather', async (req, res) => {
+  const { city } = req.query;
   if (!city) {
-    return res.status(400).json({ error: "Paramètre 'city' requis" });
+    return res.status(400).json({ error: "Paramètre 'city' manquant" });
   }
 
   try {
-    const response = await axios.get(
-      "https://api.openweathermap.org/data/2.5/weather",
+    const { data } = await axios.get(
+      'https://api.openweathermap.org/data/2.5/weather',
       {
         params: {
           q: city,
-          units: "metric",
-          lang: "fr",
-          appid: OPENWEATHER_KEY,
+          appid: process.env.OPENWEATHER_KEY,
+          units: 'metric',
+          lang: 'fr',
         },
       }
     );
-
-    res.json(response.data);
+    res.json(data);
   } catch (err) {
-    console.error(err.response?.data || err.message);
-
-    if (err.response?.status === 404) {
-      return res.status(404).json({ error: "Ville non trouvée" });
-    }
-
-    res.status(500).json({ error: "Erreur lors de la récupération météo" });
+    console.error('OpenWeather error', err.response?.data ?? err.message);
+    res.status(500).json({ error: 'Erreur lors de la récupération météo' });
   }
 });
 
-// POST /api/ai-advice
-app.post("/api/ai-advice", async (req, res) => {
+app.post('/api/ai-advice', async (req, res) => {
   const { city, temp, description, windSpeed } = req.body;
 
-  if (
-    typeof city !== "string" ||
-    typeof temp !== "number" ||
-    typeof description !== "string" ||
-    typeof windSpeed !== "number"
-  ) {
-    return res
-      .status(400)
-      .json({ error: "Données météo invalides ou manquantes" });
+  if (!city || !description || typeof temp !== 'number') {
+    return res.status(400).json({ error: 'Données météo invalides' });
   }
 
   const prompt = `
 Ville : ${city}
 Température : ${temp}°C
 Conditions : ${description}
-Vent : ${windSpeed} m/s
 
-Donne un seul conseil météo en français, en une phrase courte et conviviale :
-- parle au tutoiement
-- ne donne PAS la température à nouveau
-- adapte-toi aux conditions (pluie, chaleur, vent, froid)
+Donne une seule phrase de conseil météo :
+- français
+- tutoiement
+- courte
+- sans chiffre
+- sans répéter la météo
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
       messages: [
-        {
-          role: "system",
-          content:
-            "Tu es un assistant météo qui donne des conseils simples et utiles.",
-        },
-        { role: "user", content: prompt },
+        { role: 'system', content: 'Assistant météo concis.' },
+        { role: 'user', content: prompt },
       ],
-      max_tokens: 80,
+      max_tokens: 40,
       temperature: 0.7,
     });
 
-    const advice =
-      completion.choices?.[0]?.message?.content?.trim() ||
-      "Je n'ai pas pu générer de conseil cette fois.";
-
+    const advice = completion.choices?.[0]?.message?.content?.trim();
     res.json({ advice });
   } catch (err) {
-    console.error(err.response?.data || err.message);
-    res.status(500).json({ error: "Erreur lors de la génération IA" });
+    console.error('Groq error', err.response?.data ?? err.message);
+    res.status(500).json({ error: 'Erreur lors de la génération IA' });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Serveur API démarré sur http://localhost:${port}`);
-});
+app.listen(PORT, () =>
+  console.log(`Serveur API démarré sur http://localhost:${PORT}`)
+);
