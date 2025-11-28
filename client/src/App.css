@@ -1,8 +1,13 @@
 :root {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color-scheme: dark;
-  background: radial-gradient(circle at top, #1e293b, #020617);
   color: #f9fafb;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
@@ -10,13 +15,89 @@ body {
   min-height: 100vh;
 }
 
+/* ---------- Layout global ---------- */
+
 .app {
+  position: relative;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 1.5rem;
+  overflow: hidden;
+  isolation: isolate;
 }
+
+.app__bg {
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  background: radial-gradient(circle at top, #1e293b, #020617);
+  background-size: 200% 200%;
+  animation: bg-pan 25s linear infinite;
+}
+
+.app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: radial-gradient(circle at top, rgba(15, 23, 42, 0.5), rgba(15, 23, 42, 0.95));
+}
+
+/* Jour / nuit : légère variation de luminosité */
+
+.app--day .app__bg {
+  filter: brightness(1.05);
+}
+
+.app--night .app__bg {
+  filter: brightness(0.85);
+}
+
+/* ---------- Thèmes météo ---------- */
+
+.app--default .app__bg {
+  background-image: radial-gradient(circle at top, #1e293b, #020617);
+}
+
+.app--clear .app__bg {
+  background-image: radial-gradient(circle at 10% 0%, #fde68a, #0f172a 60%);
+}
+
+.app--clouds .app__bg {
+  background-image: radial-gradient(circle at 20% 0%, #e5e7eb, #4b5563 45%, #020617 90%);
+}
+
+.app--rain .app__bg {
+  background-image: radial-gradient(circle at 0% 0%, #38bdf8, #0f172a 55%, #020617 90%);
+}
+
+.app--snow .app__bg {
+  background-image: radial-gradient(circle at 0% 0%, #e0f2fe, #94a3b8 45%, #020617 90%);
+}
+
+.app--mist .app__bg {
+  background-image: radial-gradient(circle at 10% 0%, #cbd5f5, #64748b 40%, #020617 90%);
+}
+
+.app--storm .app__bg {
+  background-image: radial-gradient(circle at 0% 0%, #020617, #020617 50%, #020617 100%);
+}
+
+@keyframes bg-pan {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 60%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+/* ---------- Carte principale ---------- */
 
 .card {
   background: rgba(15, 23, 42, 0.9);
@@ -26,6 +107,8 @@ body {
   width: 100%;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(18px);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  position: relative;
 }
 
 h1 {
@@ -34,6 +117,8 @@ h1 {
   margin-bottom: 1.5rem;
   font-size: 1.8rem;
 }
+
+/* ---------- Formulaire ---------- */
 
 .form {
   display: flex;
@@ -46,12 +131,18 @@ h1 {
   padding: 0.6rem 0.9rem;
   border-radius: 999px;
   border: 1px solid #334155;
-  background: #020617;
+  background: rgba(15, 23, 42, 0.9);
   color: #e5e7eb;
 }
 
 .form input::placeholder {
-  color: #64748b;
+  color: #6b7280;
+}
+
+.form input:focus {
+  outline: none;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
 }
 
 .form button {
@@ -62,12 +153,22 @@ h1 {
   color: #0f172a;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.form button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(56, 189, 248, 0.4);
 }
 
 .form button:disabled {
   opacity: 0.6;
   cursor: default;
+  box-shadow: none;
 }
+
+/* ---------- Messages ---------- */
 
 .error {
   color: #fca5a5;
@@ -75,20 +176,63 @@ h1 {
   margin-bottom: 0.5rem;
 }
 
+/* ---------- Bloc météo ---------- */
+
 .weather-block {
   margin-top: 1rem;
-  text-align: center;
+  animation: fade-in 0.35s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header : ville + icône + tag jour/nuit */
+
+.weather-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.weather-title h2 {
+  margin: 0;
+}
+
+.daynight-tag {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(15, 118, 110, 0.2);
+  border: 1px solid rgba(45, 212, 191, 0.4);
+  color: #a5f3fc;
+}
+
+.weather-icon {
+  font-size: 2.2rem;
 }
 
 .temp {
   font-size: 2.8rem;
-  margin: 0.2rem 0;
+  margin: 0.7rem 0 0.2rem;
+  text-align: center;
 }
 
 .description {
   text-transform: capitalize;
   color: #e5e7eb;
   margin-bottom: 0.8rem;
+  text-align: center;
 }
 
 .details {
@@ -99,6 +243,8 @@ h1 {
   margin-bottom: 1rem;
 }
 
+/* ---------- Bouton IA & bloc conseil ---------- */
+
 .ai-button {
   padding: 0.6rem 1.2rem;
   border-radius: 999px;
@@ -108,11 +254,18 @@ h1 {
   font-weight: 600;
   cursor: pointer;
   width: 100%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.ai-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(34, 197, 94, 0.4);
 }
 
 .ai-button:disabled {
   opacity: 0.6;
   cursor: default;
+  box-shadow: none;
 }
 
 .ai-advice {
@@ -123,4 +276,279 @@ h1 {
   border: 1px solid rgba(34, 197, 94, 0.3);
   text-align: left;
   font-size: 0.95rem;
+}
+
+/* ---------- Effets météo : couche de base ---------- */
+
+.fx-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ---------- Pluie ---------- */
+
+.rain-layer {
+  mix-blend-mode: screen;
+}
+
+.raindrop {
+  position: absolute;
+  top: -15vh;
+  width: 2px;
+  height: 50px;
+  background: linear-gradient(to bottom, transparent, rgba(191, 219, 254, 0.95));
+  opacity: 0.6;
+  filter: blur(0.3px);
+  border-radius: 999px;
+  left: calc(var(--x) * 1%);
+  animation-name: rain-fall;
+  animation-duration: calc(var(--d) * 1s);
+  animation-delay: calc(var(--delay) * 1s);
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+.raindrop:nth-child(3n) {
+  height: 70px;
+  opacity: 0.85;
+}
+
+.raindrop:nth-child(5n) {
+  height: 40px;
+  opacity: 0.4;
+}
+
+@keyframes rain-fall {
+  0% {
+    transform: translate3d(0, -120%, 0);
+  }
+  100% {
+    transform: translate3d(0, 120vh, 0);
+  }
+}
+
+/* ---------- Neige ---------- */
+
+.snow-layer {
+  mix-blend-mode: screen;
+}
+
+.snowflake {
+  position: absolute;
+  top: -10vh;
+  width: calc(var(--size) * 1px);
+  height: calc(var(--size) * 1px);
+  background: rgba(241, 245, 249, 0.9);
+  border-radius: 999px;
+  left: calc(var(--x) * 1%);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.7);
+  animation-name: snow-fall;
+  animation-duration: calc(var(--d) * 1s);
+  animation-delay: calc(var(--delay) * 1s);
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+@keyframes snow-fall {
+  0% {
+    transform: translate3d(0, -120%, 0);
+  }
+  100% {
+    transform: translate3d(10px, 120vh, 0);
+  }
+}
+
+/* ---------- Nuages ---------- */
+
+.clouds-layer {
+  mix-blend-mode: screen;
+}
+
+.cloud {
+  position: absolute;
+  top: calc(var(--y) * 1%);
+  left: -30%;
+  width: 260px;
+  height: 90px;
+  background: radial-gradient(circle at 20% 40%, #ffffff, #e5e7eb 40%, #cbd5f5 70%);
+  filter: blur(2px);
+  border-radius: 999px;
+  opacity: 0.85;
+  transform: scale(var(--scale));
+  animation: cloud-drift 40s linear infinite;
+  animation-delay: calc(var(--delay) * 1s);
+}
+
+.cloud:nth-child(2n) {
+  width: 220px;
+  height: 80px;
+  opacity: 0.7;
+}
+
+@keyframes cloud-drift {
+  0% {
+    transform: translateX(0) scale(var(--scale));
+  }
+  100% {
+    transform: translateX(160vw) scale(var(--scale));
+  }
+}
+
+/* ---------- Ciel clair (soleil) ---------- */
+
+.clear-layer {
+  pointer-events: none;
+}
+
+.sun-core {
+  position: absolute;
+  top: 10%;
+  right: 14%;
+  width: 90px;
+  height: 90px;
+  border-radius: 999px;
+  background: radial-gradient(circle, #fee2a5, #facc15 60%, #f97316 90%);
+  box-shadow: 0 0 40px rgba(250, 204, 21, 0.8);
+}
+
+.sun-ray {
+  position: absolute;
+  top: 10%;
+  right: 14%;
+  width: 160px;
+  height: 160px;
+  border-radius: 999px;
+  border: 2px solid rgba(251, 191, 36, 0.5);
+  transform-origin: center;
+  animation: sun-rotate 18s linear infinite;
+}
+
+.sun-ray--2 {
+  width: 190px;
+  height: 190px;
+  border-color: rgba(251, 191, 36, 0.3);
+  animation-duration: 26s;
+}
+
+.sun-ray--3 {
+  width: 220px;
+  height: 220px;
+  border-color: rgba(251, 191, 36, 0.2);
+  animation-duration: 32s;
+}
+
+@keyframes sun-rotate {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(360deg);
+  }
+}
+
+/* ---------- Brume ---------- */
+
+.mist-layer {
+  mix-blend-mode: screen;
+}
+
+.mist {
+  position: absolute;
+  left: -10%;
+  width: 120%;
+  height: 80px;
+  background: linear-gradient(
+    to bottom,
+    rgba(148, 163, 184, 0),
+    rgba(148, 163, 184, 0.45),
+    rgba(148, 163, 184, 0)
+  );
+  filter: blur(6px);
+  animation: mist-drift 30s linear infinite;
+}
+
+.mist--1 {
+  top: 20%;
+}
+
+.mist--2 {
+  top: 45%;
+  animation-duration: 40s;
+}
+
+.mist--3 {
+  top: 70%;
+  animation-duration: 50s;
+}
+
+@keyframes mist-drift {
+  0% {
+    transform: translateX(-5%);
+  }
+  50% {
+    transform: translateX(5%);
+  }
+  100% {
+    transform: translateX(-5%);
+  }
+}
+
+/* ---------- Orage ---------- */
+
+.storm-layer {
+  mix-blend-mode: screen;
+}
+
+.storm-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 0%, rgba(250, 250, 250, 0.7), transparent 60%);
+  opacity: 0;
+  animation: storm-flash 8s infinite;
+}
+
+.storm-flash--2 {
+  background: radial-gradient(circle at 70% 10%, rgba(250, 250, 250, 0.6), transparent 60%);
+  animation-delay: 4s;
+}
+
+@keyframes storm-flash {
+  0%,
+  70% {
+    opacity: 0;
+  }
+  72% {
+    opacity: 0.7;
+  }
+  76% {
+    opacity: 0;
+  }
+  78% {
+    opacity: 0.5;
+  }
+  82%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---------- Responsif ---------- */
+
+@media (max-width: 480px) {
+  .card {
+    padding: 1.5rem;
+  }
+
+  .details {
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: center;
+  }
+
+  .weather-header {
+    align-items: flex-start;
+  }
 }
